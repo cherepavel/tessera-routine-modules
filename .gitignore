@@ -55,3 +55,4 @@ Thumbs.db
 
 # Local codebase-analysis output
 graphify-out/
+.idea/

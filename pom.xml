@@ -80,7 +80,7 @@
     <version.logback>1.5.13</version.logback>
     <version.junit>4.13.1</version.junit>
     <version.jetbrains_annotations>21.0.1</version.jetbrains_annotations>
-    <version.tessera_project_io>0.0.4</version.tessera_project_io>
+    <version.tessera_project_io>0.0.5-SNAPSHOT</version.tessera_project_io>
   </properties>
 
   <!-- manual set -->

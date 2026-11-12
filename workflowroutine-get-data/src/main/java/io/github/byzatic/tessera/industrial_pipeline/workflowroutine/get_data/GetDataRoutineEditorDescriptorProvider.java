@@ -2,6 +2,8 @@ package io.github.byzatic.tessera.industrial_pipeline.workflowroutine.get_data;
 
 import com.google.auto.service.AutoService;
 import io.github.byzatic.tessera.lib.configio.unified.spi.routine.BduiWidgetIds;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.ConfigurationFileScope;
+import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineConfigurationFileDescriptor;
 import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptor;
 import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineEditorDescriptorProvider;
 import io.github.byzatic.tessera.lib.configio.unified.spi.routine.RoutineFunctionDescriptor;
@@ -18,6 +20,22 @@ public final class GetDataRoutineEditorDescriptorProvider
                 .routineId("GetDataWorkflowRoutine")
                 .displayName("Get Data")
                 .description("Generates source metrics and attaches processing reasons.")
+                .routineWidgetIds(List.of(BduiWidgetIds.ROUTINE_CONFIGURATION_FILE))
+                .configurationFiles(List.of(
+                        RoutineConfigurationFileDescriptor.newBuilder()
+                                .key("configurationFilePath")
+                                .displayName("Generator configuration")
+                                .description("JSON configuration used to select and configure the metric generator.")
+                                .suggestedFileName("generator_conf.json")
+                                .allowedExtensions(List.of(".json"))
+                                .allowedScopes(List.of(
+                                        ConfigurationFileScope.NODE,
+                                        ConfigurationFileScope.PROJECT_GLOBAL
+                                ))
+                                .defaultScope(ConfigurationFileScope.NODE)
+                                .required(true)
+                                .build()
+                ))
                 .functions(List.of(
                         function(
                                 "GenerateData",

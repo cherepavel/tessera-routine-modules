@@ -24,6 +24,10 @@ public class ProcessingStatusRoutineJarIT {
             assertEquals("1.0.0", metadata.getVersion());
             assertEquals(isolatedArtifact.getFileName().toString(), metadata.getArtifactFileName());
             assertEquals("ProcessStatus", metadata.getDescriptor().getFunctions().get(0).getFunctionId());
+            assertEquals(java.util.List.of(), metadata.getDescriptor().getRoutineWidgetIds());
+            assertEquals(java.util.List.of(), metadata.getDescriptor().getEnvironment());
+            assertEquals(java.util.List.of(), metadata.getDescriptor().getConfigurationFiles());
+            org.junit.Assert.assertFalse(metadata.getDescriptor().isAllowCustomEnvironmentKeys());
         } finally {
             Files.deleteIfExists(isolatedArtifact);
             Files.deleteIfExists(modulesDirectory);

@@ -34,6 +34,7 @@
     <module>workflowroutine-graph-lifting-data</module>
     <module>workflowroutine-processing-status</module>
     <module>workflowroutine-get-data</module>
+    <module>workflowroutine-data-generator</module>
   </modules>
 
   <scm>

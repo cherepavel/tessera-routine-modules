@@ -15,11 +15,13 @@ import io.github.byzatic.tessera.workflowroutine.workflowroutines.health.HealthF
 import io.github.byzatic.tessera.workflowroutine.workflowroutines.health.HealthFlagState;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -31,6 +33,41 @@ public class DataGeneratorWorkflowRoutineTest {
             PROCESS FUNCTION GenerateData RETURN STATUS;
             PUT DATA STATUS TO STORAGE StatusStorage BY DATA ID Status;
             """;
+
+    @Test
+    public void runsWithoutOptionalRandomGeneratorModule() throws Exception {
+        String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
+        Process process = new ProcessBuilder(
+                Path.of(System.getProperty("java.home"), "bin", "java").toString(),
+                "--limit-modules", "java.se", "-cp", classpath,
+                JreCompatibilityProbe.class.getName()
+        ).redirectErrorStream(true).start();
+        try {
+            assertTrue("JRE compatibility probe timed out", process.waitFor(30, TimeUnit.SECONDS));
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            assertEquals(output, 0, process.exitValue());
+            assertTrue(output, output.contains("Routine executed without jdk.random"));
+        } finally {
+            process.destroyForcibly();
+        }
+    }
+
+    /** Entry point for a separate JVM whose observable modules exclude jdk.random. */
+    public static final class JreCompatibilityProbe {
+        public static void main(String[] args) {
+            if (ModuleLayer.boot().findModule("jdk.random").isPresent()) {
+                throw new IllegalStateException("jdk.random must be unavailable in this probe");
+            }
+            TestApi api = new TestApi("MCg3-WorkflowRoutine-DSL", SCRIPT);
+            HealthFlagProxy health = HealthFlagProxy.newBuilder().build();
+            new DataGeneratorWorkflowRoutineFactory().create(api, health).run();
+            assertEquals(HealthFlagState.COMPLETE, health.getHealthFlagState());
+            assertEquals(1, api.writes.size());
+            DataItem metric = (DataItem) api.writes.get(0).getDataValue();
+            assertTrue(Set.of("0", "1", "2").contains(metric.getMetricValue()));
+            System.out.println("Routine executed without jdk.random");
+        }
+    }
 
     @Test
     public void executesInlineDslAndPublishesCompatibleDataItemsOnEveryRun() {

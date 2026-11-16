@@ -12,7 +12,7 @@ import io.github.byzatic.tessera.workflowroutine.workflowroutines.health.HealthF
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.random.RandomGenerator;
+import java.util.Random;
 
 /** Composition root for the test data generator routine. */
 public final class DataGeneratorWorkflowRoutine extends AbstractWorkflowRoutine {
@@ -39,7 +39,7 @@ public final class DataGeneratorWorkflowRoutine extends AbstractWorkflowRoutine 
         try {
             runRoutine = TesseraRoutineApplicationFactory.create(
                     workflowRoutineApi,
-                    new DataGeneratorFunctionHandler(RandomGenerator.getDefault())
+                    new DataGeneratorFunctionHandler(new Random())
             );
         } catch (Exception e) {
             throw new MCg3ApiOperationIncompleteException(e);

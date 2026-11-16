@@ -5,6 +5,10 @@
 с равной вероятностью: OK, warning, alarm. Повторяющиеся значения допустимы.
 Входные метрики, аргументы функции и файл настроек генератора не требуются.
 
+Источником случайных чисел служит `java.util.Random` из модуля `java.base`.
+Рутина работает в Java 17 JRE без опционального модуля `jdk.random`:
+поиск реализации алгоритма через `RandomGenerator.getDefault()` не используется.
+
 Рутина использует общую инфраструктуру выполнения из `sharedresources-project-common`:
 загрузка DSL из параметров `MCg3-WorkflowRoutine-DSL` или
 `MCg3-WorkflowRoutine-DSL-File`, обработка `PROCESS`/`PUT` и сохранение `DataItem`
@@ -49,3 +53,6 @@ mvn -pl workflowroutine-data-generator -am verify
 Артефакт рутины: `target/workflowroutine-data-generator-1.0.0-shaded.jar`.
 Общие ресурсы `sharedresources-project-common` должны быть доступны загрузчику
 Tessera, как и для остальных рутин.
+
+Тест совместимости запускает фабрику и DSL рутины в отдельной JVM с
+`--limit-modules java.se`, где `jdk.random` недоступен.

@@ -35,6 +35,7 @@
     <module>workflowroutine-processing-status</module>
     <module>workflowroutine-get-data</module>
     <module>workflowroutine-data-generator</module>
+    <module>workflowroutine-status-evaluation</module>
   </modules>
 
   <scm>

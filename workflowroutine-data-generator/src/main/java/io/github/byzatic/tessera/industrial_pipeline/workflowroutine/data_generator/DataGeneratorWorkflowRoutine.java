@@ -28,9 +28,9 @@ public final class DataGeneratorWorkflowRoutine extends AbstractWorkflowRoutine 
                 DataGeneratorWorkflowRoutine.class,
                 workflowRoutineApi,
                 healthFlagProxy,
+                Version.of(1, 1, 0),
                 Version.of(1, 0, 0),
-                Version.of(1, 0, 0),
-                "Generates random statuses from 0 to 2 for testing aggregation nodes.",
+                "Generates raw numeric metrics and random statuses for testing pipelines.",
                 "Tessera",
                 "Apache License 2.0",
                 3L
@@ -39,10 +39,27 @@ public final class DataGeneratorWorkflowRoutine extends AbstractWorkflowRoutine 
         try {
             runRoutine = TesseraRoutineApplicationFactory.create(
                     workflowRoutineApi,
-                    new DataGeneratorFunctionHandler(new Random())
+                    new DataGeneratorFunctionHandler(configuredRandom(workflowRoutineApi))
             );
         } catch (Exception e) {
+            healthFlagProxy.setHealthFlagState(HealthFlagState.FATAL);
             throw new MCg3ApiOperationIncompleteException(e);
+        }
+    }
+
+    private static Random configuredRandom(MCg3WorkflowRoutineApiInterface api) {
+        var seeds = api.getConfigurationParameters().stream()
+                .filter(parameter -> "Seed".equals(parameter.getParameterKey())).toList();
+        if (seeds.size() > 1) {
+            throw new IllegalArgumentException("Seed must be specified once");
+        }
+        if (seeds.isEmpty() || seeds.get(0).getParameterValue().isBlank()) {
+            return new Random();
+        }
+        try {
+            return new Random(Long.parseLong(seeds.get(0).getParameterValue().trim()));
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Seed must be a signed 64-bit integer", e);
         }
     }
 

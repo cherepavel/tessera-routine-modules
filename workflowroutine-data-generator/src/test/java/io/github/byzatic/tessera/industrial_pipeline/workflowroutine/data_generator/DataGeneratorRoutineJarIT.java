@@ -22,15 +22,22 @@ public class DataGeneratorRoutineJarIT {
             var metadata = loader.findMetadata("DataGeneratorWorkflowRoutine").orElseThrow();
             var descriptor = metadata.getDescriptor();
 
-            assertEquals("1.0.0", metadata.getVersion());
+            assertEquals("1.1.0", metadata.getVersion());
             assertEquals(isolatedArtifact.getFileName().toString(), metadata.getArtifactFileName());
             assertEquals(List.of(), descriptor.getConfigurationFiles());
-            assertEquals(List.of(), descriptor.getEnvironment());
-            assertEquals(1, descriptor.getFunctions().size());
+            assertEquals(List.of(BduiWidgetIds.ROUTINE_ENV), descriptor.getRoutineWidgetIds());
+            assertEquals(1, descriptor.getEnvironment().size());
+            assertEquals("Seed", descriptor.getEnvironment().get(0).getKey());
+            org.junit.Assert.assertFalse(descriptor.getEnvironment().get(0).isRequired());
+            assertEquals(2, descriptor.getFunctions().size());
             var function = descriptor.getFunctions().get(0);
             assertEquals("GenerateData", function.getFunctionId());
             assertEquals(List.of(), function.getArgumentIds());
             assertEquals(List.of(BduiWidgetIds.FUNC_OUTPUT_DATA), function.getBduiWidgetIds());
+            var number = descriptor.getFunctions().get(1);
+            assertEquals("GenerateNumber", number.getFunctionId());
+            assertEquals(List.of("Min", "Max", "Type", "MetricName", "PromLabel_*"), number.getArgumentIds());
+            assertEquals(List.of(BduiWidgetIds.FUNC_ENV, BduiWidgetIds.FUNC_OUTPUT_DATA), number.getBduiWidgetIds());
 
             var factoryRegistration = jar.getJarEntry("META-INF/services/io.github.byzatic.tessera.workflowroutine.workflowroutines.WorkflowRoutineFactoryInterface");
             try (var content = jar.getInputStream(factoryRegistration)) {

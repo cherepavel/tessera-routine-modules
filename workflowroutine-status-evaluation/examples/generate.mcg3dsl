@@ -1,0 +1,2 @@
+PROCESS FUNCTION GenerateNumber("MetricName=temperature", "Min=0", "Max=120", "Type=DECIMAL", "PromLabel_unit=celsius") RETURN RAW;
+PUT DATA RAW TO STORAGE MEASUREMENTS MODIFIER local BY DATA ID temperature;

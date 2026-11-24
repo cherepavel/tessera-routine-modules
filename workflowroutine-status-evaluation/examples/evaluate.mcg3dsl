@@ -1,0 +1,3 @@
+GET FROM SELF STORAGE MEASUREMENTS BY DATA ID temperature AS RAW;
+PROCESS FUNCTION EvaluateStatus("DataId=RAW", "MetricName=temperature_status", "WarningThreshold=70", "WarningOperator=>=", "AlarmThreshold=90", "AlarmOperator=>=") RETURN STATUS;
+PUT DATA STATUS TO STORAGE STATUS MODIFIER local BY DATA ID status;

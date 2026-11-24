@@ -10,6 +10,8 @@ import io.github.byzatic.tessera.industrial_pipeline.sharedresources.project_com
 import org.junit.Test;
 
 import java.time.Instant;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -57,6 +59,58 @@ public class DataGeneratorFunctionHandlerTest {
         ));
 
         assertTrue(failure.getMessage().contains("Unknown"));
+    }
+
+    @Test
+    public void generatesRawNumbersWithNamesLabelsAndNoStatusReason() throws Exception {
+        DataGeneratorFunctionHandler handler = new DataGeneratorFunctionHandler(new Random(42));
+        FunctionArguments arguments = FunctionArguments.parse(List.of(
+                "Min=-12.5", "Max=30.75", "MetricName=temperature", "PromLabel_site=north"));
+        Instant before = Instant.now();
+        for (int i = 0; i < 100; i++) {
+            MetricSample sample = handler.execute("GenerateNumber", arguments, "RAW", workspace);
+            BigDecimal value = new BigDecimal(sample.value());
+            assertTrue(value.compareTo(new BigDecimal("-12.5")) >= 0);
+            assertTrue(value.compareTo(new BigDecimal("30.75")) < 0);
+            assertEquals("temperature", sample.name());
+            assertEquals(List.of(new MetricLabel("site", "north", "=")), sample.labels());
+            assertFalse(sample.createdAt().isBefore(before));
+            assertFalse(sample.createdAt().isAfter(Instant.now()));
+        }
+    }
+
+    @Test
+    public void reproducesASequenceAndSupportsIntegersAndDefaultMetricNames() throws Exception {
+        DataGeneratorFunctionHandler first = new DataGeneratorFunctionHandler(new Random(42));
+        DataGeneratorFunctionHandler second = new DataGeneratorFunctionHandler(new Random(42));
+        FunctionArguments arguments = FunctionArguments.parse(List.of("Min=-10", "Max=10", "Type=INTEGER"));
+        List<String> values = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            MetricSample sample = first.execute("GenerateNumber", arguments, "NUMBER", workspace);
+            assertEquals(sample.value(), second.execute("GenerateNumber", arguments, "NUMBER", workspace).value());
+            assertEquals("number", sample.name());
+            long value = new BigDecimal(sample.value()).longValueExact();
+            assertTrue(value >= -10 && value <= 10);
+            values.add(sample.value());
+        }
+        assertTrue(new HashSet<>(values).size() > 1);
+    }
+
+    @Test
+    public void rejectsInvalidNumericConfiguration() {
+        DataGeneratorFunctionHandler handler = new DataGeneratorFunctionHandler(new Random(42));
+        List<List<String>> invalid = List.of(
+                List.of("Max=1"), List.of("Min=0"), List.of("Min=2", "Max=1"),
+                List.of("Min=NaN", "Max=1"), List.of("Min=0", "Max=Infinity"),
+                List.of("Min=0", "Max=1", "Type=FLOAT"),
+                List.of("Min=0.5", "Max=1", "Type=INTEGER"),
+                List.of("Min=0", "Max=9223372036854775808", "Type=INTEGER"),
+                List.of("Min=0", "Max=1", "MetricName="),
+                List.of("Min=0", "Min=1", "Max=2"));
+        for (List<String> arguments : invalid) {
+            assertThrows(arguments.toString(), IllegalArgumentException.class, () -> handler.execute(
+                    "GenerateNumber", FunctionArguments.parse(arguments), "NUMBER", workspace));
+        }
     }
 
     private static final class UnsupportedMetricStorage implements MetricStorage {

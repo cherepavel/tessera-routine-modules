@@ -33,6 +33,10 @@ public class DataGeneratorWorkflowRoutineTest {
             PROCESS FUNCTION GenerateData RETURN STATUS;
             PUT DATA STATUS TO STORAGE StatusStorage BY DATA ID Status;
             """;
+    private static final String NUMERIC_SCRIPT = """
+            PROCESS FUNCTION GenerateNumber("Min=0", "Max=120", "Type=DECIMAL", "MetricName=temperature") RETURN RAW;
+            PUT DATA RAW TO STORAGE RawStorage MODIFIER global BY DATA ID temperature;
+            """;
 
     @Test
     public void runsWithoutOptionalRandomGeneratorModule() throws Exception {
@@ -65,6 +69,9 @@ public class DataGeneratorWorkflowRoutineTest {
             assertEquals(1, api.writes.size());
             DataItem metric = (DataItem) api.writes.get(0).getDataValue();
             assertTrue(Set.of("0", "1", "2").contains(metric.getMetricValue()));
+            TestApi numbers = new TestApi("MCg3-WorkflowRoutine-DSL", NUMERIC_SCRIPT);
+            new DataGeneratorWorkflowRoutineFactory().create(numbers, HealthFlagProxy.newBuilder().build()).run();
+            assertEquals(1, numbers.writes.size());
             System.out.println("Routine executed without jdk.random");
         }
     }
@@ -79,6 +86,7 @@ public class DataGeneratorWorkflowRoutineTest {
         routine.run();
 
         assertEquals("DataGeneratorWorkflowRoutine", routine.getName());
+        assertEquals("1.1.0", routine.getWorkflowRoutineVersion().toString());
         assertEquals(HealthFlagState.COMPLETE, health.getHealthFlagState());
         assertEquals(2, api.writes.size());
         for (StorageItem item : api.writes) {
@@ -122,12 +130,51 @@ public class DataGeneratorWorkflowRoutineTest {
         assertTrue(api.writes.isEmpty());
     }
 
+    @Test
+    public void configuredSeedReproducesSequencesAcrossInstancesAndAdvancesAcrossRuns() {
+        TestApi first = new TestApi("MCg3-WorkflowRoutine-DSL", NUMERIC_SCRIPT, "42");
+        TestApi second = new TestApi("MCg3-WorkflowRoutine-DSL", NUMERIC_SCRIPT, "42");
+        var firstRoutine = new DataGeneratorWorkflowRoutineFactory().create(first, HealthFlagProxy.newBuilder().build());
+        var secondRoutine = new DataGeneratorWorkflowRoutineFactory().create(second, HealthFlagProxy.newBuilder().build());
+        Set<String> values = new java.util.HashSet<>();
+        for (int i = 0; i < 10; i++) {
+            firstRoutine.run();
+            secondRoutine.run();
+            DataItem one = (DataItem) first.writes.get(i).getDataValue();
+            DataItem two = (DataItem) second.writes.get(i).getDataValue();
+            assertEquals(one.getMetricValue(), two.getMetricValue());
+            assertEquals("temperature", one.getMetricName());
+            assertEquals(StorageItem.ScopeType.GLOBAL, first.writes.get(i).getScope());
+            values.add(one.getMetricValue());
+        }
+        assertTrue(values.size() > 1);
+    }
+
+    @Test
+    public void rejectsMalformedSeedAndNumericRangesWithoutPublishingResults() {
+        HealthFlagProxy health = HealthFlagProxy.newBuilder().build();
+        assertThrows(IllegalStateException.class, () -> new DataGeneratorWorkflowRoutineFactory()
+                .create(new TestApi("MCg3-WorkflowRoutine-DSL", NUMERIC_SCRIPT, "invalid"), health));
+        assertEquals(HealthFlagState.FATAL, health.getHealthFlagState());
+        TestApi api = new TestApi("MCg3-WorkflowRoutine-DSL", NUMERIC_SCRIPT.replace("Max=120", "Max=-1"));
+        var routine = new DataGeneratorWorkflowRoutineFactory().create(api, health);
+        assertThrows(RuntimeException.class, routine::run);
+        assertEquals(HealthFlagState.FATAL, health.getHealthFlagState());
+        assertTrue(api.writes.isEmpty());
+    }
+
     private static final class TestApi implements MCg3WorkflowRoutineApiInterface, StorageApiInterface {
         private final List<ConfigurationParameter> parameters;
         private final List<StorageItem> writes = new ArrayList<>();
 
         private TestApi(String key, String value) {
             parameters = List.of(ConfigurationParameter.newBuilder().parameterKey(key).parameterValue(value).build());
+        }
+
+        private TestApi(String key, String value, String seed) {
+            parameters = List.of(
+                    ConfigurationParameter.newBuilder().parameterKey(key).parameterValue(value).build(),
+                    ConfigurationParameter.newBuilder().parameterKey("Seed").parameterValue(seed).build());
         }
 
         @Override

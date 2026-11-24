@@ -1,0 +1,4 @@
+GET FROM CHILD SourceA STORAGE STATUS BY DATA ID status AS A;
+GET FROM CHILD SourceB STORAGE STATUS BY DATA ID status AS B;
+PROCESS FUNCTION ProcessStatus("MetricName=aggregated_status", "DataId=A", "DataId=B") RETURN TOTAL;
+PUT DATA TOTAL TO STORAGE STATUS MODIFIER local BY DATA ID aggregated_status;
